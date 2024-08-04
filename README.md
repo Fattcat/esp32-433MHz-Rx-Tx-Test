@@ -2,19 +2,18 @@
 Capture and Replay signals using classic Arduino Receiver & Transmitter or with cc1101.
 
 ## CONNECTION for classic Receiver and Transmitter :
-### Receiver --> esp32
+# 🛠️ Receiver --> esp32 🛠️
 - VCC --> 3.3V
 - GND --> GND
 - Pin --> GPIO 02
 
-### Transmitter --> esp32
+## 🛠️ Transmitter --> esp32 🛠️
 - VCC --> 3.3V
 - GND --> GND
 - Pin --> GPIO 04
 
-## CONNECTION for cc1101 with esp32 :
-### cc1101 --> esp32
-
+## 🛠️ CONNECTION for cc1101 with esp32 🛠️
+# cc1101 --> esp32
 - VCC --> 3.3V
 - GND --> GND
 - MISO --> GPIO19
@@ -23,10 +22,39 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - CSN --> GPIO5
 - GDO0 --> GPIO4
 
+## Oled --> esp32
+- VCC --> 3.3V
+- GND --> GND
+- SCL --> GPIO 22
+- SDA --> GPIO 21
+
+### 📝 NOTE 📝
+- 📝 DO NOT UPLOAD code which DOESN´T USE some components (If unsupported component is connected)
+- 📝 UPLOAD SPECIFFIC CODE ONLY When u use Full set (like Display / or without, Serial usage / or without)
+- 📝 ! PLEASE READ SPECIFFIC DOCS DOWN ! 📝
+
+### 📌Speciffic Docs / INFO 📌
+- ----------------------------------------------------------
+## Code name : "esp32-Rx&Tx-Test-3Pin.ino"
+- ONLY controlled by SERIAL MONITOR Inside Arduino IDE
+- Baud Rate 9600
+- Commands : rx, tx, clear
+- Meaning of commands :
+- type rx to Serial Monitor for switch to RX Mode (Capturing SIGNAL 24 BIT MAX idk why it cannot capture more than 24 BIT Lenght)
+- type tx to Serial Monitor for switch to TX Mode (Captured Signal Going to be TRANSMITTED on 433 MHz Freq)
+- type clear Serial Monitor for clearing everithing
+- ----------------------------------------------------------
+
+- ----------------------------------------------------------
+## Code name "esp32-cc1101-SignalTest.ino"
+- Here I going to add more INFO for cc1101 ...
+
+
+
 # IMAGES
 - Here is 433 MHz Receiver with Transmitter image from AliExpress only cost 2 € (price for Receiver & Transitter)
 ![433 MHz Receiver with Transmitter](Arduino-433MHz-Transmitter&Receiver.jpg)
 - And u can also use cc1101 it cost 2 € for 1 pcs
-![Arduino-cc1101-Image](Arduino-cc1101-Image.jpg)
+![](Arduino-cc1101-Image.jpg)
 - and filally 0.96" Oled Display cost maybe 2 €
-![Oled Display](Arduino-0.96-OledDisplay.jpg)
+![](Arduino-0.96-OledDisplay.jpg)
