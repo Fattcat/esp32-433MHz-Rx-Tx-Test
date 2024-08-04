@@ -29,4 +29,4 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - And u can also use cc1101 it cost 2 € for 1 pcs
 ![Arduino-cc1101-Image](Arduino-cc1101-Image.jpg)
 - and filally 0.96" Oled Display cost maybe 2 €
-![](Arduino-0.96-OledDisplay.jpg)
+![Oled Display](Arduino-0.96-OledDisplay.jpg)
