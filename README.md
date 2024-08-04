@@ -49,8 +49,11 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 ## Code name "esp32-cc1101-SignalTest.ino"
 - Here I going to add more INFO for cc1101 ...
 
-
-
+- ----------------------------------------------------------
+### Fixed Bugs
+- Fixed BUG when display cant be cleared
+- Other bugs fixed ...
+- ----------------------------------------------------------
 # IMAGES
 - Here is 433 MHz Receiver with Transmitter image from AliExpress only cost 2 € (price for Receiver & Transitter)
 ![433 MHz Receiver with Transmitter](Arduino-433MHz-Transmitter&Receiver.jpg)
