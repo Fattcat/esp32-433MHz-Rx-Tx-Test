@@ -50,17 +50,8 @@ void setup() {
   mySwitch.enableReceive(2); // Prijímanie signálov na pine 2
   mySwitch.enableTransmit(4); // Vysielanie signálov na pine 4
 
-  // Vyčistenie displeja a zobrazenie úvodného textu
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.println("System ready.");
-  display.println("Use buttons to:");
-  display.println("RX: Receive");
-  display.println("TX: Transmit");
-  display.println("CLEAR: Clear");
-  display.display();
+  // Vyčistenie displeja a zobrazenie úvodného menu
+  displayMenu();
 }
 
 void loop() {
@@ -71,6 +62,15 @@ void loop() {
     transmissionDone = false;
     updateDisplay("Switched to RX mode.");
     delay(500); // Anti-bounce delay
+
+    if (isReceiving && mySwitch.available()) {
+      lastReceivedCode = mySwitch.getReceivedValue();
+      bitLength = mySwitch.getReceivedBitlength();
+      updateDisplay("Captured: " + String(lastReceivedCode) + " (" + String(bitLength) + " bits)");
+      mySwitch.resetAvailable();
+      delay(2000); // Zobrazenie zachyteného signálu po dobu 2 sekúnd
+      displayMenu(); // Zobrazenie úvodného menu
+    }
   }
 
   if (digitalRead(TX_BUTTON_PIN) == LOW) {
@@ -83,6 +83,8 @@ void loop() {
       updateDisplay("No signal stored.");
     }
     delay(500); // Anti-bounce delay
+    delay(2000); // Zobrazenie správy po dobu 2 sekúnd
+    displayMenu(); // Zobrazenie úvodného menu
   }
 
   if (digitalRead(CLEAR_BUTTON_PIN) == LOW) {
@@ -93,20 +95,8 @@ void loop() {
     bitLength = 0;
     updateDisplay("Cleared all modes.");
     delay(500); // Anti-bounce delay
-  }
-
-  // Prijímanie signálov
-  if (isReceiving && mySwitch.available()) {
-    lastReceivedCode = mySwitch.getReceivedValue();
-    bitLength = mySwitch.getReceivedBitlength();
-    updateDisplay("Captured: " + String(lastReceivedCode) + " (" + String(bitLength) + " bits)");
-    mySwitch.resetAvailable();
-  }
-
-  // Vysielanie signálov
-  if (isTransmitting && !transmissionDone && lastReceivedCode != -1) {
-    transmitCode(lastReceivedCode);
-    transmissionDone = true;
+    delay(2000); // Zobrazenie správy po dobu 2 sekúnd
+    displayMenu(); // Zobrazenie úvodného menu
   }
 }
 
@@ -126,5 +116,18 @@ void updateDisplay(String message) {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.println(message);
+  display.display();
+}
+
+void displayMenu() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("System ready.");
+  display.println("Use buttons to:");
+  display.println("RX: Receive");
+  display.println("TX: Transmit");
+  display.println("CLEAR: Clear");
   display.display();
 }
