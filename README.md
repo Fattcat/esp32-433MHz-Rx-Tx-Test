@@ -55,6 +55,11 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - Here is 433 MHz Receiver with Transmitter image from AliExpress only cost 2 € (price for Receiver & Transitter)
 ![433 MHz Receiver with Transmitter](Arduino-433MHz-Transmitter&Receiver.jpg)
 - And u can also use cc1101 it cost 2 € for 1 pcs
+-
 ![](Arduino-cc1101-Image.jpg)
+
+
 - and filally 0.96" Oled Display cost maybe 2 €
+-
+
 ![](Arduino-0.96-OledDisplay.jpg)
