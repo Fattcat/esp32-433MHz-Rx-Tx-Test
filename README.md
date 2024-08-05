@@ -34,7 +34,7 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - 📝 ! PLEASE READ SPECIFFIC DOCS DOWN ! 📝
 
 ### 👉 Watch Video 👈
-[![Clonning Car Key Fob](https://www.youtube.com/shorts/KTenIR3jttA)](https://www.youtube.com/shorts/KTenIR3jttA)
+[![Clonning Car Key Fob](https://www.youtube.com/shorts/KTenIR3jttA)
 
 ### 📌Speciffic Docs / INFO 📌
 ## Code name : "esp32-Rx&Tx-Test-3Pin.ino"
