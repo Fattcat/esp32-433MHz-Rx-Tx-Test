@@ -34,7 +34,6 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - 📝 ! PLEASE READ SPECIFFIC DOCS DOWN ! 📝
 
 ### 📌Speciffic Docs / INFO 📌
-- ----------------------------------------------------------
 ## Code name : "esp32-Rx&Tx-Test-3Pin.ino"
 - ONLY controlled by SERIAL MONITOR Inside Arduino IDE
 - Baud Rate 9600
@@ -44,11 +43,9 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - type tx to Serial Monitor for switch to TX Mode (Captured Signal Going to be TRANSMITTED on 433 MHz Freq)
 - type clear Serial Monitor for clearing everithing
 - ----------------------------------------------------------
-
-- ----------------------------------------------------------
 ## Code name "esp32-cc1101-SignalTest.ino"
 - Here I going to add more INFO for cc1101 ...
-
+- Didnt tested yet by myself :/
 - ----------------------------------------------------------
 ### Fixed Bugs
 - Fixed BUG when display cant be cleared
