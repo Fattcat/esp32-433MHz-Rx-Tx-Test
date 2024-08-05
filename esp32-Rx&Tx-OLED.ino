@@ -27,6 +27,7 @@ int bitLength = 0;
 bool isReceiving = false;
 bool isTransmitting = false;
 bool transmissionDone = false;
+unsigned long rxStartTime = 0;
 
 void setup() {
   // Inicializácia sériového monitoru (na debugovanie)
@@ -58,33 +59,20 @@ void loop() {
   // Kontrola tlačidiel
   if (digitalRead(RX_BUTTON_PIN) == LOW) {
     isReceiving = true;
-    isTransmitting = false;
-    transmissionDone = false;
-    updateDisplay("Switched to RX mode.");
+    rxStartTime = millis(); // Začiatok časovača
+    updateDisplay("Receiving...");
     delay(500); // Anti-bounce delay
-
-    if (isReceiving && mySwitch.available()) {
-      lastReceivedCode = mySwitch.getReceivedValue();
-      bitLength = mySwitch.getReceivedBitlength();
-      updateDisplay("Captured: " + String(lastReceivedCode) + " (" + String(bitLength) + " bits)");
-      mySwitch.resetAvailable();
-      delay(2000); // Zobrazenie zachyteného signálu po dobu 2 sekúnd
-      displayMenu(); // Zobrazenie úvodného menu
-    }
   }
 
   if (digitalRead(TX_BUTTON_PIN) == LOW) {
-    isReceiving = false;
-    isTransmitting = true;
-    transmissionDone = false;
     if (lastReceivedCode != -1) {
       transmitCode(lastReceivedCode);
     } else {
       updateDisplay("No signal stored.");
+      delay(2000); // Zobrazenie správy po dobu 2 sekúnd
+      displayMenu(); // Zobrazenie úvodného menu
     }
     delay(500); // Anti-bounce delay
-    delay(2000); // Zobrazenie správy po dobu 2 sekúnd
-    displayMenu(); // Zobrazenie úvodného menu
   }
 
   if (digitalRead(CLEAR_BUTTON_PIN) == LOW) {
@@ -94,20 +82,57 @@ void loop() {
     lastReceivedCode = -1;
     bitLength = 0;
     updateDisplay("Cleared all modes.");
-    delay(500); // Anti-bounce delay
     delay(2000); // Zobrazenie správy po dobu 2 sekúnd
     displayMenu(); // Zobrazenie úvodného menu
+    delay(500); // Anti-bounce delay
+  }
+
+  // Prijímanie signálov
+  if (isReceiving) {
+    if (mySwitch.available()) {
+      long receivedValue = mySwitch.getReceivedValue();
+      int receivedBitLength = mySwitch.getReceivedBitlength();
+
+      // Overenie, či je signál 24-bitový
+      if (receivedBitLength == 24) {
+        lastReceivedCode = receivedValue;
+        bitLength = receivedBitLength;
+        updateDisplay("Captured: " + String(lastReceivedCode) + " (" + String(bitLength) + " bits)");
+        delay(2000); // Zobrazenie zachyteného signálu po dobu 2 sekúnd
+      } else {
+        updateDisplay("Invalid signal.");
+        delay(2000); // Zobrazenie správy po dobu 2 sekúnd
+      }
+
+      mySwitch.resetAvailable();
+    }
+
+    // Kontrola časovača
+    if (millis() - rxStartTime > 5000) {
+      isReceiving = false; // Zastavenie prijímania po 5 sekundách
+      if (lastReceivedCode != -1) {
+        updateDisplay("Saving signal...");
+        delay(2000); // Zobrazenie správy po dobu 2 sekúnd
+        displayMenu(); // Zobrazenie úvodného menu
+      } else {
+        updateDisplay("No signal received.");
+        delay(2000); // Zobrazenie správy po dobu 2 sekúnd
+        displayMenu(); // Zobrazenie úvodného menu
+      }
+    }
   }
 }
 
 void transmitCode(long code) {
   if (bitLength == 0) bitLength = 24; // Predpokladáme predvolených 24 bitov, ak nebolo určené
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 2; i++) {
     mySwitch.send(code, bitLength); // Počet bitov je dynamický
-    updateDisplay("Transmitted: " + String(code) + " (" + String(bitLength) + " bits)");
+    updateDisplay("Transmitted: " + String(code) + "\n (" + String(bitLength) + " bits)");
     delay(1000); // Čaká 1 sekundu pred ďalším vysielaním
   }
   updateDisplay("Transmission complete.");
+  delay(2000); // Zobrazenie správy po dobu 2 sekúnd
+  displayMenu(); // Zobrazenie úvodného menu
 }
 
 void updateDisplay(String message) {
@@ -124,10 +149,12 @@ void displayMenu() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
+  display.println("Creator : Fattcat");
+  display.println("github.com/Fattcat");
   display.println("System ready.");
-  display.println("Use buttons to:");
+  display.println("Use buttons:");
   display.println("RX: Receive");
   display.println("TX: Transmit");
-  display.println("CLEAR: Clear");
+  display.println("CLEAR: Clear signal");
   display.display();
 }
