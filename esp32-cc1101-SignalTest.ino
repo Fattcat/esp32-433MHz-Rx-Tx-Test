@@ -1,4 +1,4 @@
-#include <ELECHOUSE_CC1101.h>
+#include <ELECHOUSE_CC1101_SRC_DRV.h>
 
 // ----------------------
 // CONNECTION :
@@ -39,14 +39,14 @@ void loop() {
       isReceiving = true;
       isTransmitting = false;
       transmissionDone = false; // Resetovať flag pre dokončenie vysielania
-      ELECHOUSE_cc1101.SetReceive(); // Nastaviť CC1101 do RX módu
+      ELECHOUSE_cc1101.SetRx(); // Nastaviť CC1101 do RX módu
       Serial.println("Switched to RX mode.");
     }
     else if (command.equalsIgnoreCase("tx")) {
       isReceiving = false;
       isTransmitting = true;
       transmissionDone = false; // Resetovať flag pre dokončenie vysielania
-      ELECHOUSE_cc1101.SetTX(); // Nastaviť CC1101 do TX módu
+      ELECHOUSE_cc1101.SetTx(); // Nastaviť CC1101 do TX módu
       if (lastReceivedCode != -1) {
         transmitCode(lastReceivedCode);
       } else {
