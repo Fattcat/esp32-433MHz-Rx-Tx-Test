@@ -1,6 +1,6 @@
 # esp32-433MHz-Rx-Tx-Test
 Capture and Replay signals using classic Arduino Receiver & Transmitter or with cc1101.
-
+# IF some .ino CODE contains rcswitch.h then It MEANS SUPPORT Receive & Transmit ONLY 24 BIT Signal !
 ## CONNECTION for classic Receiver and Transmitter :
 # 🛠️ Receiver --> esp32 🛠️
 - VCC --> 3.3V
