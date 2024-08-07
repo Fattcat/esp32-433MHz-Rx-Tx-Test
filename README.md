@@ -22,13 +22,13 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - CSN --> GPIO5
 - GDO0 --> GPIO4
 
-## Oled --> esp32
+# Oled --> esp32
 - VCC --> 3.3V
 - GND --> GND
 - SCL --> GPIO 22
 - SDA --> GPIO 21
 
-### 📝 NOTE 📝
+# 📝 NOTE 📝
 - 📝 DO NOT UPLOAD code which DOESN´T USE some components (If unsupported component is connected)
 - 📝 UPLOAD SPECIFFIC CODE ONLY When u use Full set (like Display / or without, Serial usage / or without)
 - 📝 ! PLEASE READ SPECIFFIC DOCS DOWN ! 📝
@@ -37,7 +37,7 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - (Click on IMG)
 [![Clonning Car Key Fob](https://github.com/Fattcat/esp32-433MHz-Rx-Tx-Test/blob/main/esp32-ClonningKeyFob.jpg)](https://www.youtube.com/shorts/KTenIR3jttA)
 
-### 📌Speciffic Docs / INFO 📌
+# 📌Speciffic Docs / INFO 📌
 ## Code name : "esp32-Rx&Tx-Test-3Pin.ino"
 - ONLY controlled by SERIAL MONITOR Inside Arduino IDE
 - Baud Rate 9600
