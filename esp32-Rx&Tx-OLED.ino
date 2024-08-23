@@ -2,7 +2,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <RCSwitch.h>
-#include <WiFi.h>
+//#include <WiFi.h>
 
 // OLED displej
 #define OLED_ADDRESS 0x3C        // I2C adresa OLED displeja
