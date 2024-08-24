@@ -2,7 +2,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <RCSwitch.h>
-//#include <WiFi.h>
 
 // OLED displej
 #define OLED_ADDRESS 0x3C        // I2C adresa OLED displeja
@@ -56,11 +55,30 @@ void setup() {
 }
 
 void loop() {
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n'); // Zmena " na '
+    input.trim();
+
+    if (input.startsWith("tx")) {
+      String codeString = input.substring(3); // Prestavte menovanie premenných
+      long code = codeString.toInt(); // Prestavte menovanie premenných
+      
+      if (code > 0) {
+        transmitCode(code);
+        Serial.println("Signal sa spravne odoslal!");
+        updateDisplay("Signal spravne odoslany.");
+        delay(500); // Anti-bounce delay
+      } else {
+        Serial.println("Asi si to zle napisal!");
+      }
+    }
+  }
+
   // Kontrola tlačidiel
   if (digitalRead(RX_BUTTON_PIN) == LOW) {
     isReceiving = true;
     rxStartTime = millis(); // Začiatok časovača
-    updateDisplay("Receiving...");
+    updateDisplay("Zachytavam...");
     delay(500); // Anti-bounce delay
   }
 
@@ -68,7 +86,7 @@ void loop() {
     if (lastReceivedCode != -1) {
       transmitCode(lastReceivedCode);
     } else {
-      updateDisplay("No signal stored.");
+      updateDisplay("Ziadny signal nie je ulozeny.");
       delay(2000); // Zobrazenie správy po dobu 2 sekúnd
       displayMenu(); // Zobrazenie úvodného menu
     }
@@ -81,7 +99,7 @@ void loop() {
     transmissionDone = false;
     lastReceivedCode = -1;
     bitLength = 0;
-    updateDisplay("Cleared all modes.");
+    updateDisplay("Vycistene vsetky mody.");
     delay(2000); // Zobrazenie správy po dobu 2 sekúnd
     displayMenu(); // Zobrazenie úvodného menu
     delay(500); // Anti-bounce delay
@@ -97,7 +115,7 @@ void loop() {
       if (receivedBitLength == 24) {
         lastReceivedCode = receivedValue;
         bitLength = receivedBitLength;
-        updateDisplay("Captured: " + String(lastReceivedCode) + " (" + String(bitLength) + " bits)");
+        updateDisplay("Zachytene: " + String(lastReceivedCode) + "\n" + " (" + String(bitLength) + " bits)");
         delay(2000); // Zobrazenie zachyteného signálu po dobu 2 sekúnd
       } else {
         updateDisplay("Invalid signal.");
@@ -111,11 +129,11 @@ void loop() {
     if (millis() - rxStartTime > 5000) {
       isReceiving = false; // Zastavenie prijímania po 5 sekundách
       if (lastReceivedCode != -1) {
-        updateDisplay("Saving signal...");
+        updateDisplay("Ukladam signal...");
         delay(2000); // Zobrazenie správy po dobu 2 sekúnd
         displayMenu(); // Zobrazenie úvodného menu
       } else {
-        updateDisplay("No signal received.");
+        updateDisplay("Signal neprijaty :(");
         delay(2000); // Zobrazenie správy po dobu 2 sekúnd
         displayMenu(); // Zobrazenie úvodného menu
       }
@@ -127,10 +145,10 @@ void transmitCode(long code) {
   if (bitLength == 0) bitLength = 24; // Predpokladáme predvolených 24 bitov, ak nebolo určené
   for (int i = 0; i < 2; i++) {
     mySwitch.send(code, bitLength); // Počet bitov je dynamický
-    updateDisplay("Transmitted: " + String(code) + "\n (" + String(bitLength) + " bits)");
+    updateDisplay("Odoslane: " + String(code) + "\n" + "(" + String(bitLength) + " BITs)");
     delay(1000); // Čaká 1 sekundu pred ďalším vysielaním
   }
-  updateDisplay("Transmission complete.");
+  updateDisplay("Odoslanie kompletne.");
   delay(2000); // Zobrazenie správy po dobu 2 sekúnd
   displayMenu(); // Zobrazenie úvodného menu
 }
@@ -149,12 +167,12 @@ void displayMenu() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  display.println("Creator : Fattcat");
+  display.println("DEV : Fattcat");
   display.println("github.com/Fattcat");
-  display.println("System ready.");
-  display.println("Use buttons:");
-  display.println("RX: Receive");
-  display.println("TX: Transmit");
-  display.println("CLEAR: Clear signal");
+  display.println("Donkova Kopirovacka");
+  display.println("Pouzitie (USE):");
+  display.println("RX: Prijat");
+  display.println("TX: Odoslat");
+  display.println("CLEAR: Cisticka");
   display.display();
 }
