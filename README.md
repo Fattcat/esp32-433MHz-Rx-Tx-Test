@@ -7,6 +7,8 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - GND --> GND
 - Pin --> GPIO 02
 
+# for best usage PLS USE code "esp32-Rx&Tx-OLED.ino" (cuz there is all u need to use) other codes are experimental
+
 ## 🛠️ Transmitter --> esp32 🛠️
 - VCC --> 3.3V
 - GND --> GND
@@ -29,7 +31,7 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - SDA --> GPIO 21
 
 # 📝 NOTE 📝
-- 📝 DO NOT UPLOAD code which DOESN´T USE some components (If unsupported component is connected)
+- 📝 DO NOT UPLOAD code which DOESN´T USE APPROPRIATE components (If unsupported component is connected)
 - 📝 UPLOAD SPECIFFIC CODE ONLY When u use Full set (like Display / or without, Serial usage / or without)
 - 📝 ! PLEASE READ SPECIFFIC DOCS DOWN ! 📝
 
@@ -47,7 +49,7 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - type tx to Serial Monitor for switch to TX Mode (Captured Signal Going to be TRANSMITTED on 433 MHz Freq)
 - type clear Serial Monitor for clearing everithing
 - ----------------------------------------------------------
-## Code name "esp32-cc1101-SignalTest.ino"
+## Code name : "esp32-cc1101-SignalTest.ino"
 - Here I going to add more INFO for cc1101 ...
 - Didnt tested yet by myself :/
 - ----------------------------------------------------------
@@ -59,11 +61,10 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - Here is 433 MHz Receiver with Transmitter image from AliExpress only cost 2 € (price for Receiver & Transitter)
 ![433 MHz Receiver with Transmitter](Arduino-433MHz-Transmitter&Receiver.jpg)
 - And u can also use cc1101 it cost 2 € for 1 pcs
--
+- 
 ![](Arduino-cc1101-Image.jpg)
 
 
 - and filally 0.96" Oled Display cost maybe 2 €
--
 
 ![](Arduino-0.96-OledDisplay.jpg)
