@@ -51,7 +51,8 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - ----------------------------------------------------------
 ## Code name : "esp32-cc1101-SignalTest.ino"
 - Here I going to add more INFO for cc1101 ...
-- Didnt tested yet by myself :/
+- Today tested by myself but it didnt Receive Signal :/
+- In previous code was suspicious error in code which caused Transmit "Jamming Signal" idk why ...
 - ----------------------------------------------------------
 ### Fixed Bugs
 - Fixed BUG when display cant be cleared
