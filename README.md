@@ -9,6 +9,8 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 
 # for best usage PLS USE code "esp32-Rx&Tx-OLED.ino" (cuz there is all u need to use) other codes are experimental
 
+# Also supported RollingCode function
+
 ## 🛠️ Transmitter --> esp32 🛠️
 - VCC --> 3.3V
 - GND --> GND
