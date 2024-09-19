@@ -4,6 +4,10 @@
   <img src="https://komarev.com/ghpvc/?username=johndoe&style=flat-square" alt="Visitor Badge">
 </div>
 
+## Počet zobrazení repozitára
+
+![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://github.com/Fattcat/esp32-433MHz-Rx-Tx-Test&count_bg=%2379C83D&title_bg=%23555555&icon=github.svg&icon_color=%23E7E7E7&title=views&edge_flat=false)
+
 Capture and Replay signals using classic Arduino Receiver & Transmitter or with cc1101.
 # IF some .ino CODE contains rcswitch.h then It MEANS SUPPORT Receive & Transmit ONLY 24 BIT Signal !
 ## CONNECTION for classic Receiver and Transmitter :
