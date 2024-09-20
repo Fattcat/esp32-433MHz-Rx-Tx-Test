@@ -1,7 +1,7 @@
 # esp32-433MHz-Rx-Tx-Test
 
 ## visiors came to check repo
-<div align="center" height="100px" width="700px">
+<div align="center" height: 200px; width: 50px;>
   <img src="https://komarev.com/ghpvc/?username=johndoe&style=flat-square" alt="Visitor Badge">
 </div>
 
