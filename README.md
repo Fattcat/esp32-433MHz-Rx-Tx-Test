@@ -2,19 +2,8 @@
 
 ---
 
-<div align="center">
-<a href="https://github.com/Fattcat/esp32-433MHz-Rx-Tx-Test">
-<img src="https://img.shields.io/github/
-stars/Fattcat/esp32-433MHz-Rx-Tx-Test?
-style=social" alt="stars - esp32-433MHz-Rx-Tx-Test">
-</a>
-<a href="https://github.com/Fattcat/esp32-433MHz-Rx-Tx-Test">
-<img src="https://img.shields.io/github/
-forks/Fattcat/esp32-433MHz-Rx-Tx-Test?
-style=social" alt="forks - WiFiX-DualBand-Deaut
-her">
-</a>
-</div>
+![GitHub Repo stars](https://img.shields.io/github/stars/Fattcat/esp32-433MHz-Rx-Tx-Test?style=social)
+![GitHub forks](https://img.shields.io/github/forks/Fattcat/esp32-433MHz-Rx-Tx-Test?style=social)
 
 ---
 
