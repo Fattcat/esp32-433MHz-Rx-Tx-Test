@@ -2,7 +2,7 @@
 
 ---
 
-<div>
+<div align="center">
 <a href="https://github.com/Fattcat/esp32-433MHz-Rx-Tx-Test">
 <img src="https://img.shields.io/github/
 stars/Fattcat/esp32-433MHz-Rx-Tx-Test?
