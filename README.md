@@ -1,5 +1,23 @@
 # esp32-433MHz-Rx-Tx-Test
 
+---
+
+<div>
+<a href="https://github.com/Fattcat/esp32-433MHz-Rx-Tx-Test">
+<img src="https://img.shields.io/github/
+stars/Fattcat/esp32-433MHz-Rx-Tx-Test?
+style=social" alt="stars - esp32-433MHz-Rx-Tx-Test">
+</a>
+<a href="https://github.com/Fattcat/esp32-433MHz-Rx-Tx-Test">
+<img src="https://img.shields.io/github/
+forks/Fattcat/esp32-433MHz-Rx-Tx-Test?
+style=social" alt="forks - WiFiX-DualBand-Deaut
+her">
+</a>
+</div>
+
+---
+
 ## visiors came to check repo
 <div align="center" height: 200px; width: 50px;>
   <img src="https://komarev.com/ghpvc/?username=Fattcat&style=flat-square" alt="Visitor Badge">
