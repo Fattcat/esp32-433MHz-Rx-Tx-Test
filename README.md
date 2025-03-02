@@ -1,9 +1,11 @@
 # esp32-433MHz-Rx-Tx-Test
 
 ---
-<div align="center">
-![GitHub Repo stars](https://img.shields.io/github/stars/Fattcat/esp32-433MHz-Rx-Tx-Test?style=social)
-![GitHub forks](https://img.shields.io/github/forks/Fattcat/esp32-433MHz-Rx-Tx-Test?style=social)
+
+<p align="center">
+  <img src="https://img.shields.io/github/stars/Fattcat/esp32-433MHz-Rx-Tx-Test?style=social" alt="GitHub Repo stars">
+  <img src="https://img.shields.io/github/forks/Fattcat/esp32-433MHz-Rx-Tx-Test?style=social" alt="GitHub forks">
+</p>
 
 ---
 
