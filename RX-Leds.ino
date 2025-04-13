@@ -1,3 +1,4 @@
+
 #include <RCSwitch.h>
 
 RCSwitch mySwitch = RCSwitch();
@@ -32,24 +33,30 @@ void setup() {
   }
 }
 
+unsigned long lastPrint = 0;
+
 void loop() {
   if (mySwitch.available()) {
     unsigned long receivedCode = mySwitch.getReceivedValue();
     Serial.print("Prijatý kód: ");
     Serial.println(receivedCode);
 
-    // Porovnaj prijatý kód so zoznamom
     for (int i = 0; i < 8; i++) {
       if (receivedCode == codes[i]) {
-        // Prepnúť stav LED
         ledStates[i] = !ledStates[i];
         digitalWrite(ledPins[i], ledStates[i] ? HIGH : LOW);
         Serial.print("Prepínam LED ");
         Serial.println(i + 1);
-        break;  // Už sme našli zhodu, netreba pokračovať
+        break;
       }
     }
 
     mySwitch.resetAvailable();
+  } else {
+    // vypíš len každú sekundu
+    if (millis() - lastPrint > 1000) {
+      Serial.println(F("ASI NIE JE pripojeni RCSwitch prijimac!"));
+      lastPrint = millis();
+    }
   }
 }
