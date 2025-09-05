@@ -258,7 +258,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       msg.style.display = 'block';
       msg.textContent = text;
       msg.style.background = isError ? '#f8d7da' : '#d4edda';
-      msg.style.color = isError ? '#721c24' : '#155724';
+      msg.style.color = isError ? '#721c24' : '#155722';
       setTimeout(() => msg.style.display = 'none', 3000);
     }
 
@@ -275,42 +275,69 @@ const char index_html[] PROGMEM = R"rawliteral(
           codes.forEach(item => {
             const div = document.createElement('div');
             div.className = 'code-item';
+            div.dataset.code = item.code;
+
             div.innerHTML = `
               <div class="code-info">
-                <div><strong>${item.name}</strong></div>
-                <div style="font-family: monospace; color: #e74c3c; font-size: 1.1em;">Kód: ${item.code}</div>
+                <div><strong id="name-${item.code}">${item.name}</strong></div>
+                <div style="font-family: monospace; color: #c0392b; font-size: 1.1em;">Kód: ${item.code}</div>
+                <input type="text" id="edit-${item.code}" value="${item.name}" 
+                      class="edit-input" style="display:none; margin-top:4px;" />
               </div>
               <div class="code-actions">
-                <button onclick="sendStored(${item.code})" title="Odoslať">📤</button>
-                <button onclick="startEdit(${item.code})" title="Upraviť meno">✎</button>
-                <button onclick="saveEdit(${item.code})" style="display:none;" title="Uložiť">✔️</button>
-                <button onclick="deleteCode(${item.code})" class="danger" title="Vymazať">🗑️</button>
+                <button type="button" onclick="useCode(${item.code})" title="Použiť kód">📋</button>
+                <button type="button" onclick="sendStored(${item.code})" title="Odoslať">📤</button>
+                <button type="button" onclick="startEdit(${item.code})" title="Upraviť meno">✎</button>
+                <button type="button" onclick="saveEdit(${item.code})" style="display:none;" title="Uložiť">✔️</button>
+                <button type="button" onclick="deleteCode(${item.code})" class="danger" title="Vymazať">🗑️</button>
               </div>
             `;
             list.appendChild(div);
           });
-        });
+        })
+        .catch(() => showMessage('Chyba pri načítaní kódov', true));
+    }
+
+    // ✅ Nastaví kód do hlavného vstupu
+    function useCode(code) {
+      document.getElementById('codeInput').value = code;
+      showMessage(`Kód ${code} použitý`);
+    }
+
+    // ✅ Odoslanie kódu z uloženého tlačidla
+    function sendStored(code) {
+      useCode(code); // nastaví do poľa
+      transmitCode(); // odosli
     }
 
     function startEdit(code) {
-      document.getElementById(`name-${code}`).style.display = 'none';
-      const input = document.getElementById(`edit-${code}`);
-      input.style.display = 'inline-block';
+      const item = document.querySelector(`.code-item[data-code="${code}"]`);
+      const nameSpan = item.querySelector(`#name-${code}`);
+      const input = item.querySelector(`#edit-${code}`);
+      const saveBtn = item.querySelector(`[onclick="saveEdit(${code})"]`);
+
+      if (nameSpan) nameSpan.style.display = 'none';
+      if (input) input.style.display = 'inline-block';
+      if (saveBtn) saveBtn.style.display = 'inline-block';
+      item.querySelector(`[onclick="startEdit(${code})"]`).style.display = 'none';
+
       input.focus();
-      document.querySelector(`.code-item button[onclick="saveEdit(${code})"]`).style.display = 'inline-block';
-      document.querySelector(`.code-item button[onclick="startEdit(${code})"]`).style.display = 'none';
     }
 
     function saveEdit(code) {
-      const newName = document.getElementById(`edit-${code}`).value.trim() || 'Nezmenovaný';
+      const item = document.querySelector(`.code-item[data-code="${code}"]`);
+      const newName = item.querySelector(`#edit-${code}`).value.trim() || 'Nezmenovaný';
+
       fetch('/updateName', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'code=' + code + '&name=' + encodeURIComponent(newName)
-      }).then(() => {
+      })
+      .then(() => {
         showMessage('Meno aktualizované');
-        updateCodesList();
-      });
+        updateCodesList(); // obnovíme celý zoznam
+      })
+      .catch(() => showMessage('Chyba pri ukladaní mena', true));
     }
 
     function receiveAndSave() {
@@ -325,13 +352,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         body: 'name=' + encodeURIComponent(name)
       })
       .then(res => res.text())
-      .then(text => {
-        showMessage(text);
-        updateCodesList();
-      })
-      .catch(err => {
-        showMessage('Chyba: ' + err, true);
-      })
+      .then(text => showMessage(text))
+      .catch(err => showMessage('Chyba: ' + err, true))
       .finally(() => {
         setTimeout(() => {
           btn.textContent = 'Receive & Save';
@@ -340,47 +362,51 @@ const char index_html[] PROGMEM = R"rawliteral(
       });
     }
 
+    // ✅ Transmit – číta z #codeInput
     function transmitCode() {
-      const code = document.getElementById('codeInput').value.trim();
-      if (!code || isNaN(code) || code <= 0 || code > 16777215) {
+      const input = document.getElementById('codeInput').value.trim();
+      if (!input || isNaN(input) || input <= 0 || input > 16777215) {
         showMessage('Neplatný kód!', true);
         return;
       }
+      const code = parseInt(input);
       fetch('/transmit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'code=' + encodeURIComponent(code)
-      }).then(() => showMessage('Kód odoslaný!'));
+        body: 'code=' + code
+      }).then(() => showMessage('Odoslané: ' + code));
     }
 
     function transmit3Times() {
-      const code = document.getElementById('codeInput').value.trim();
-      if (!code || isNaN(code) || code <= 0 || code > 16777215) {
+      const input = document.getElementById('codeInput').value.trim();
+      if (!input || isNaN(input) || input <= 0 || input > 16777215) {
         showMessage('Neplatný kód!', true);
         return;
       }
+      const code = parseInt(input);
       fetch('/transmit3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'code=' + encodeURIComponent(code)
-      }).then(() => showMessage('Odoslané 3x!'));
+        body: 'code=' + code
+      }).then(() => showMessage('Odoslané 3x: ' + code));
     }
 
     function startTransmitLoop() {
-      const code = document.getElementById('codeInput').value.trim();
-      if (!code || isNaN(code) || code <= 0 || code > 16777215) {
+      const input = document.getElementById('codeInput').value.trim();
+      if (!input || isNaN(input) || input <= 0 || input > 16777215) {
         showMessage('Neplatný kód!', true);
         return;
       }
+      const code = parseInt(input);
       if (loopInterval) clearInterval(loopInterval);
       loopInterval = setInterval(() => {
         fetch('/transmit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'code=' + encodeURIComponent(code)
+          body: 'code=' + code
         });
       }, 1000);
-      showMessage('Loop spustený');
+      showMessage('Loop: každú sekundu');
     }
 
     function stopTransmitLoop() {
@@ -389,21 +415,14 @@ const char index_html[] PROGMEM = R"rawliteral(
       showMessage('Loop zastavený');
     }
 
-    function sendStored(code) {
-      fetch('/transmit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'code=' + encodeURIComponent(code)
-      }).then(() => showMessage(`Odoslané: ${code}`));
-    }
-
     function deleteCode(code) {
       if (confirm('Naozaj vymazať tento kód?')) {
         fetch('/delete?code=' + code, { method: 'GET' })
           .then(() => {
             showMessage('Kód vymazaný');
             updateCodesList();
-          });
+          })
+          .catch(() => showMessage('Chyba', true));
       }
     }
 
@@ -413,10 +432,12 @@ const char index_html[] PROGMEM = R"rawliteral(
           .then(() => {
             showMessage('Všetky kódy vymazané');
             updateCodesList();
-          });
+          })
+          .catch(() => showMessage('Chyba', true));
       }
     }
 
+    // Načítaj kódy po načítaní stránky
     updateCodesList();
   </script>
 </body>
