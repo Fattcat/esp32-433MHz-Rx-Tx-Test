@@ -4,11 +4,11 @@
 #include <RCSwitch.h>
 #include <EEPROM.h>
 
-// === Nastavenia WiFi ===
+// === WiFi nastavenia ===
 const char* ssid = "ESP32_Control";
 const char* password = "12345678";
 
-// === Nastavenia RCSwitch ===
+// === RCSwitch ===
 #define RX_PIN 2
 #define TX_PIN 4
 
@@ -16,10 +16,9 @@ const char* password = "12345678";
 #define MAX_CODES 20
 #define EEPROM_SIZE (MAX_CODES * sizeof(CodeItem))
 
-// === Štruktúra kódu s menom ===
 struct CodeItem {
   long code;
-  char name[33]; // 32 znakov + \0
+  char name[33];
 };
 
 CodeItem savedCodes[MAX_CODES];
@@ -30,10 +29,11 @@ RCSwitch mySwitch = RCSwitch();
 AsyncWebServer server(80);
 
 bool isReceiving = false;
-unsigned long rxStartTime = 0;
-String pendingName = "Unknown"; // Meno pre nový kód
+unsigned long receiveStartTime = 0;
+long lastValidCode = -1;
+String pendingName = "Unknown";
 
-// === HTML stránka – rovnaká ako predtým, len bez OLED ===
+// === HTML stránka – s editáciou mena a loading ===
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="sk">
@@ -151,9 +151,17 @@ const char index_html[] PROGMEM = R"rawliteral(
     .code-info {
       flex: 1;
     }
+    .code-actions {
+      display: flex;
+      gap: 5px;
+    }
     .code-actions button {
-      margin: 0 2px;
       padding: 5px 10px;
+      font-size: 14px;
+    }
+    .edit-input {
+      width: auto;
+      padding: 5px;
       font-size: 14px;
     }
     .message {
@@ -164,6 +172,10 @@ const char index_html[] PROGMEM = R"rawliteral(
       border: 1px solid #c3e6cb;
       border-radius: 5px;
       display: none;
+    }
+    .loading {
+      color: #2980b9;
+      font-style: italic;
     }
   </style>
 </head>
@@ -190,7 +202,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         <h2>📥 Prijímanie a ukladanie</h2>
         <div class="flex">
           <input type="text" id="nameInput" placeholder="Názov (napr. Garáž)" />
-          <button onclick="receiveAndSave()">Receive & Save</button>
+          <button onclick="receiveAndSave()" id="receiveBtn">Receive & Save</button>
         </div>
         <button onclick="clearAllCodes()" class="danger">Vymazať všetky kódy</button>
       </div>
@@ -242,10 +254,15 @@ const char index_html[] PROGMEM = R"rawliteral(
             const div = document.createElement('div');
             div.className = 'code-item';
             div.innerHTML = `
-              <div class="code-info"><strong>${item.name}</strong>: ${item.code}</div>
+              <div class="code-info">
+                <span id="name-${item.code}">${item.name}</span>
+                <input type="text" id="edit-${item.code}" class="edit-input" value="${item.name}" style="display:none;" />
+              </div>
               <div class="code-actions">
                 <button onclick="sendStored(${item.code})">Odoslať</button>
-                <button onclick="deleteCode(${item.code})">Vymazať</button>
+                <button onclick="startEdit(${item.code})" title="Upraviť meno">✎</button>
+                <button onclick="saveEdit(${item.code})" style="display:none;" title="Uložiť">✔️</button>
+                <button onclick="deleteCode(${item.code})" class="danger">🗑️</button>
               </div>
             `;
             list.appendChild(div);
@@ -253,8 +270,33 @@ const char index_html[] PROGMEM = R"rawliteral(
         });
     }
 
+    function startEdit(code) {
+      document.getElementById(`name-${code}`).style.display = 'none';
+      const input = document.getElementById(`edit-${code}`);
+      input.style.display = 'inline-block';
+      input.focus();
+      document.querySelector(`.code-item button[onclick="saveEdit(${code})"]`).style.display = 'inline-block';
+      document.querySelector(`.code-item button[onclick="startEdit(${code})"]`).style.display = 'none';
+    }
+
+    function saveEdit(code) {
+      const newName = document.getElementById(`edit-${code}`).value.trim() || 'Nezmenovaný';
+      fetch('/updateName', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'code=' + code + '&name=' + encodeURIComponent(newName)
+      }).then(() => {
+        showMessage('Meno aktualizované');
+        updateCodesList();
+      });
+    }
+
     function receiveAndSave() {
       const name = document.getElementById('nameInput').value.trim() || 'Nezmenovaný';
+      const btn = document.getElementById('receiveBtn');
+      btn.textContent = 'Prijímanie... (3s)';
+      btn.disabled = true;
+
       fetch('/receive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -265,7 +307,15 @@ const char index_html[] PROGMEM = R"rawliteral(
         showMessage(text);
         updateCodesList();
       })
-      .catch(() => showMessage('Chyba pri prijímaní', true));
+      .catch(err => {
+        showMessage('Chyba: ' + err, true);
+      })
+      .finally(() => {
+        setTimeout(() => {
+          btn.textContent = 'Receive & Save';
+          btn.disabled = false;
+        }, 3000);
+      });
     }
 
     function transmitCode() {
@@ -308,7 +358,7 @@ const char index_html[] PROGMEM = R"rawliteral(
           body: 'code=' + encodeURIComponent(code)
         });
       }, 1000);
-      showMessage('Loop spustený (1x za sekundu)');
+      showMessage('Loop spustený');
     }
 
     function stopTransmitLoop() {
@@ -368,47 +418,52 @@ void loadCodesFromEEPROM() {
 }
 
 void saveCodeToEEPROM(long code, const char* name) {
-  if (codeCount >= MAX_CODES) {
-    Serial.println("EEPROM plná!");
-    return;
-  }
+  if (codeCount >= MAX_CODES) return;
   CodeItem item;
   item.code = code;
   strncpy(item.name, name, 32);
   item.name[32] = '\0';
-
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.put(codeCount * sizeof(CodeItem), item);
   EEPROM.commit();
   EEPROM.end();
-
   savedCodes[codeCount++] = item;
 }
 
-void deleteCodeFromEEPROM(long code) {
-  EEPROM.begin(EEPROM_SIZE);
-  int index = -1;
+int findCodeIndex(long code) {
   for (int i = 0; i < codeCount; i++) {
-    if (savedCodes[i].code == code) {
-      index = i;
-      break;
+    if (savedCodes[i].code == code) return i;
+  }
+  return -1;
+}
+
+void updateNameInEEPROM(long code, const char* newName) {
+  int index = findCodeIndex(code);
+  if (index == -1) return;
+  strncpy(savedCodes[index].name, newName, 32);
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.put(index * sizeof(CodeItem), savedCodes[index]);
+  EEPROM.commit();
+  EEPROM.end();
+}
+
+void deleteCodeFromEEPROM(long code) {
+  int index = findCodeIndex(code);
+  if (index == -1) return;
+  EEPROM.begin(EEPROM_SIZE);
+  for (int i = index; i < codeCount - 1; i++) {
+    savedCodes[i] = savedCodes[i + 1];
+  }
+  codeCount--;
+  for (int i = 0; i < MAX_CODES; i++) {
+    if (i < codeCount) {
+      EEPROM.put(i * sizeof(CodeItem), savedCodes[i]);
+    } else {
+      CodeItem empty = {0, ""};
+      EEPROM.put(i * sizeof(CodeItem), empty);
     }
   }
-  if (index != -1) {
-    for (int i = index; i < codeCount - 1; i++) {
-      savedCodes[i] = savedCodes[i + 1];
-    }
-    codeCount--;
-    for (int i = 0; i < MAX_CODES; i++) {
-      if (i < codeCount) {
-        EEPROM.put(i * sizeof(CodeItem), savedCodes[i]);
-      } else {
-        CodeItem empty = {0, ""};
-        EEPROM.put(i * sizeof(CodeItem), empty);
-      }
-    }
-    EEPROM.commit();
-  }
+  EEPROM.commit();
   EEPROM.end();
 }
 
@@ -423,18 +478,6 @@ void clearAllCodesInEEPROM() {
   codeCount = 0;
 }
 
-// === Handler pre prijatie kódu ===
-void onReceiveRequest(AsyncWebServerRequest *request) {
-  if (request->hasParam("name", true)) {
-    pendingName = request->getParam("name", true)->value();
-  } else {
-    pendingName = "Nezmenovaný";
-  }
-  isReceiving = true;
-  rxStartTime = millis();
-  request->send(200, "text/plain", "Prijímanie spustené... Pošli signál.");
-}
-
 // === Setup ===
 void setup() {
   Serial.begin(115200);
@@ -444,19 +487,19 @@ void setup() {
   Serial.println("");
   Serial.print("WiFi AP: ");
   Serial.println(ssid);
-  Serial.print("IP adresa: ");
+  Serial.print("IP: ");
   Serial.println(WiFi.softAPIP());
 
   // RCSwitch
   mySwitch.enableReceive(RX_PIN);
   mySwitch.enableTransmit(TX_PIN);
-  Serial.println("RCSwitch: RX na pin 2, TX na pin 4");
+  Serial.println("RCSwitch: prijímanie na pin 2, vysielač na pin 4");
 
   // EEPROM
   loadCodesFromEEPROM();
-  Serial.printf("Načítaných %d kódov z EEPROM\n", codeCount);
+  Serial.printf("Načítaných %d kódov\n", codeCount);
 
-  // Web server
+  // === Web server ===
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html);
   });
@@ -471,27 +514,35 @@ void setup() {
     request->send(200, "application/json", json);
   });
 
-  server.on("/receive", HTTP_POST, onReceiveRequest);
+  server.on("/receive", HTTP_POST, [](AsyncWebServerRequest *request){
+    if (request->hasParam("name", true)) {
+      pendingName = request->getParam("name", true)->value();
+    } else {
+      pendingName = "Nezmenovaný";
+    }
+    isReceiving = true;
+    lastValidCode = -1;
+    receiveStartTime = millis();
+    request->send(200, "text/plain", "Prijímanie (3s)... Pošli signál.");
+  });
 
   server.on("/transmit", HTTP_POST, [](AsyncWebServerRequest *request){
     if (request->hasParam("code", true)) {
-      String input = request->getParam("code", true)->value();
-      long code = input.toInt();
+      long code = request->getParam("code", true)->value().toInt();
       if (code > 0 && code <= 16777215) {
         mySwitch.send(code, 24);
-        request->send(200, "text/plain", "Odoslané: " + String(code));
+        request->send(200, "text/plain", "Odoslané");
       } else {
-        request->send(200, "text/plain", "Neplatný kód!");
+        request->send(200, "text/plain", "Neplatný kód");
       }
     } else {
-      request->send(200, "text/plain", "Chýba kód!");
+      request->send(200, "text/plain", "Chýba kód");
     }
   });
 
   server.on("/transmit3", HTTP_POST, [](AsyncWebServerRequest *request){
     if (request->hasParam("code", true)) {
-      String input = request->getParam("code", true)->value();
-      long code = input.toInt();
+      long code = request->getParam("code", true)->value().toInt();
       if (code > 0 && code <= 16777215) {
         for (int i = 0; i < 3; i++) {
           mySwitch.send(code, 24);
@@ -499,10 +550,21 @@ void setup() {
         }
         request->send(200, "text/plain", "Odoslané 3x");
       } else {
-        request->send(200, "text/plain", "Neplatný kód!");
+        request->send(200, "text/plain", "Neplatný kód");
       }
     } else {
-      request->send(200, "text/plain", "Chýba kód!");
+      request->send(200, "text/plain", "Chýba kód");
+    }
+  });
+
+  server.on("/updateName", HTTP_POST, [](AsyncWebServerRequest *request){
+    if (request->hasParam("code") && request->hasParam("name")) {
+      long code = request->getParam("code")->value().toInt();
+      String name = request->getParam("name")->value();
+      updateNameInEEPROM(code, name.c_str());
+      request->send(200, "text/plain", "Meno aktualizované");
+    } else {
+      request->send(200, "text/plain", "Chyba");
     }
   });
 
@@ -510,7 +572,7 @@ void setup() {
     if (request->hasParam("code")) {
       long code = request->getParam("code")->value().toInt();
       deleteCodeFromEEPROM(code);
-      request->send(200, "text/plain", "Kód vymazaný");
+      request->send(200, "text/plain", "Vymazané");
     } else {
       request->send(200, "text/plain", "Chyba");
     }
@@ -522,27 +584,32 @@ void setup() {
   });
 
   server.begin();
-  Serial.println("Web server spustený na http://192.168.4.1");
+  Serial.println("Server: http://192.168.4.1");
 }
 
-// === Loop – spracovanie prijatého signálu ===
+// === Loop – vylepšené prijímanie počas 3 sekúnd ===
 void loop() {
-  if (isReceiving && mySwitch.available()) {
-    long value = mySwitch.getReceivedValue();
-    int bits = mySwitch.getReceivedBitlength();
-    if (bits == 24 && value > 0) {
-      saveCodeToEEPROM(value, pendingName.c_str());
+  if (isReceiving) {
+    unsigned long elapsed = millis() - receiveStartTime;
+    if (elapsed < 3000) {
+      if (mySwitch.available()) {
+        long value = mySwitch.getReceivedValue();
+        int bits = mySwitch.getReceivedBitlength();
+        if (bits == 24 && value > 0) {
+          lastValidCode = value;
+          Serial.printf("Zachytený signál: %ld (%d bitov)\n", value, bits);
+        }
+        mySwitch.resetAvailable();
+      }
+    } else {
       isReceiving = false;
-      Serial.printf("Uložený kód: %ld (meno: %s)\n", value, pendingName.c_str());
+      if (lastValidCode != -1) {
+        saveCodeToEEPROM(lastValidCode, pendingName.c_str());
+        Serial.printf("Uložený kód: %ld (meno: %s)\n", lastValidCode, pendingName.c_str());
+      } else {
+        Serial.println("Žiadny platný signál počas 3s");
+      }
     }
-    mySwitch.resetAvailable();
   }
-
-  // Timeout po 5 sekundách
-  if (isReceiving && (millis() - rxStartTime) > 5000) {
-    isReceiving = false;
-    Serial.println("Prijímanie ukončené (timeout)");
-  }
-
-  delay(10); // Dôležité pre WiFi a watchdog
+  delay(10);
 }
