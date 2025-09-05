@@ -1,7 +1,3 @@
-// This code support Controlling Code TX via WiFi so u need to use Mobile Phone or Notebook
-// Code is there BUT It works ONLY 1 st time and then it will automatically RESTART The ESP32
-// IDK WHYYY
-
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
@@ -9,11 +5,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <RCSwitch.h>
-// ------------------------------------------------------------------
-// Watch INFO UP !
-// -----------------------------------------------------
-// Watch INFO UP !
-// --------------------------------------------
 
 // Konfigurácia WiFi
 const char* ssid = "esp32-WiFi";
@@ -106,151 +97,173 @@ const char index_html[] PROGMEM = R"rawliteral(
 
 // Globálne premenné
 bool isReceiving = false;
-bool isTransmitting = false;
-bool transmissionDone = false;
 long lastReceivedCode = -1;
 int bitLength = 0;
 unsigned long rxStartTime = 0;
+unsigned long lastButtonPress = 0;
+
+// Na správu stavu displeja
+enum DisplayState {
+  MENU,
+  MESSAGE
+} displayState = MENU;
+
+String currentMessage = "";
+unsigned long messageTimeout = 0;
 
 // Vytvorenie inštancie SSD1306 displeja
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 RCSwitch mySwitch = RCSwitch();
 
-AsyncWebServer server(80); // Web server na porte 80
+AsyncWebServer server(80);
 
 void setup() {
-  Serial.begin(115200); // Zmenená rýchlosť
+  Serial.begin(115200);
 
+  // Inicializácia I2C pre OLED
   Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
     Serial.println(F("SSD1306 allocation failed"));
-    while (true); // Zastaví vykonávanie v nekonečnej slučke
+    while (true);
   }
 
+  // Tlačidlá s pull-up
   pinMode(RX_BUTTON_PIN, INPUT_PULLUP);
   pinMode(TX_BUTTON_PIN, INPUT_PULLUP);
   pinMode(CLEAR_BUTTON_PIN, INPUT_PULLUP);
 
+  // RCSwitch – prijímač na pin 2, vysielač na pin 4
   mySwitch.enableReceive(2);
   mySwitch.enableTransmit(4);
 
-  displayMenu();
-
+  // Spustenie WiFi AP
   WiFi.softAP(ssid, password);
   Serial.println("Access Point Created");
   Serial.print("IP Address: ");
   Serial.println(WiFi.softAPIP());
 
+  // Web server
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", index_html);  // Zobrazí web stránku
+    request->send_P(200, "text/html", index_html);
   });
 
   server.on("/transmit", HTTP_POST, [](AsyncWebServerRequest *request){
-    String inputMessage;
     if (request->hasParam("code", true)) {
-      inputMessage = request->getParam("code", true)->value();
+      String inputMessage = request->getParam("code", true)->value();
       long code = inputMessage.toInt();
       if (code > 0) {
-        transmitCode(code);
-        request->send(200, "text/plain", "kód odoslaný");
+        // Nepoužívame delay – odosielame cez vlákno alebo jednorázovo
+        transmitCodeAsync(code);  // Asynchrónne odoslanie
+        request->send(200, "text/plain", "Kód odoslaný");
       } else {
-        request->send(200, "text/plain", "kód neodoslaný ! skús to znova !");
+        request->send(200, "text/plain", "Neplatný kód!");
       }
     } else {
-      request->send(200, "text/plain", "kód neodoslaný ! skús to znova !");
+      request->send(200, "text/plain", "Chýba kód!");
     }
   });
 
   server.begin();
+
+  displayMenu();
 }
 
-void loop() {
-  handleButtons();
-  handleRFSignals();
+// Globálne premené pre asynchrónne odosielanie
+bool isTransmittingAsync = false;
+long codeToTransmit = 0;
+int transmitCount = 0;
+unsigned long lastTransmitTime = 0;
+
+void transmitCodeAsync(long code) {
+  codeToTransmit = code;
+  transmitCount = 0;
+  isTransmittingAsync = true;
+  lastTransmitTime = millis();
+}
+
+void handleAsyncTransmit() {
+  if (isTransmittingAsync && millis() - lastTransmitTime >= 1000) {
+    mySwitch.send(codeToTransmit, 24);
+    transmitCount++;
+    updateDisplay("TX: " + String(codeToTransmit) + " (" + String(transmitCount) + "/2)");
+
+    if (transmitCount >= 2) {
+      isTransmittingAsync = false;
+      messageTimeout = millis();
+      currentMessage = "Odoslané!";
+      displayState = MESSAGE;
+    } else {
+      lastTransmitTime = millis(); // ďalší krok
+    }
+  }
 }
 
 void handleButtons() {
-  if (digitalRead(RX_BUTTON_PIN) == LOW) {
+  unsigned long now = millis();
+
+  if (digitalRead(RX_BUTTON_PIN) == LOW && now - lastButtonPress > 500) {
     isReceiving = true;
-    rxStartTime = millis();
-    updateDisplay("Receiving...");
-    delay(500);
+    rxStartTime = now;
+    updateDisplay("Prijímanie...");
+    lastButtonPress = now;
   }
 
-  if (digitalRead(TX_BUTTON_PIN) == LOW) {
+  if (digitalRead(TX_BUTTON_PIN) == LOW && now - lastButtonPress > 500) {
     if (lastReceivedCode != -1) {
-      transmitCode(lastReceivedCode);
+      transmitCodeAsync(lastReceivedCode);
     } else {
-      updateDisplay("No signal stored.");
-      delay(2000);
-      displayMenu();
+      showMessage("Žiadny kód!", 2000);
     }
-    delay(500);
+    lastButtonPress = now;
   }
 
-  if (digitalRead(CLEAR_BUTTON_PIN) == LOW) {
+  if (digitalRead(CLEAR_BUTTON_PIN) == LOW && now - lastButtonPress > 500) {
     isReceiving = false;
-    isTransmitting = false;
-    transmissionDone = false;
     lastReceivedCode = -1;
     bitLength = 0;
-    updateDisplay("Cleared all modes.");
-    delay(2000);
-    displayMenu();
-    delay(500);
+    showMessage("Vymazané.", 2000);
+    lastButtonPress = now;
   }
 }
 
 void handleRFSignals() {
-  if (isReceiving) {
-    if (mySwitch.available()) {
-      long receivedValue = mySwitch.getReceivedValue();
-      int receivedBitLength = mySwitch.getReceivedBitlength();
+  if (isReceiving && mySwitch.available()) {
+    long receivedValue = mySwitch.getReceivedValue();
+    int receivedBitLength = mySwitch.getReceivedBitlength();
 
-      if (receivedBitLength == 24) {
-        lastReceivedCode = receivedValue;
-        bitLength = receivedBitLength;
-        updateDisplay("Captured: " + String(lastReceivedCode) + " (" + String(bitLength) + " bits)");
-        delay(2000);
+    if (receivedBitLength == 24) {
+      lastReceivedCode = receivedValue;
+      bitLength = receivedBitLength;
+      showMessage("Zachytené: " + String(receivedValue), 2000);
+    } else {
+      showMessage("Neplatný signál!", 2000);
+    }
+
+    mySwitch.resetAvailable();
+
+    // Ukonči prijímanie po 5s alebo ihneď po zachytení
+    if (millis() - rxStartTime > 5000) {
+      isReceiving = false;
+      if (lastReceivedCode == -1) {
+        showMessage("Žiadny signál.", 2000);
       } else {
-        updateDisplay("Invalid signal.");
-        delay(2000);
-      }
-
-      mySwitch.resetAvailable();
-
-      if (millis() - rxStartTime > 5000) {
-        isReceiving = false;
-        if (lastReceivedCode != -1) {
-          updateDisplay("Saving signal...");
-          delay(2000);
-        } else {
-          updateDisplay("No signal received.");
-          delay(2000);
-        }
-        displayMenu();
+        showMessage("Uložené.", 2000);
       }
     }
   }
 }
 
-void transmitCode(long code) {
-  if (bitLength == 0) bitLength = 24;
-  for (int i = 0; i < 2; i++) {
-    mySwitch.send(code, bitLength);
-    updateDisplay("Transmitted: " + String(code) + "\n (" + String(bitLength) + " bits)");
-    delay(1000);
-  }
-  updateDisplay("Transmission complete.");
-  delay(2000);
-  displayMenu();
+void showMessage(String msg, unsigned long duration) {
+  currentMessage = msg;
+  messageTimeout = millis() + duration;
+  displayState = MESSAGE;
 }
 
 void updateDisplay(String message) {
   display.clearDisplay();
-  display.setCursor(0, 0);
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
   display.println(message);
   display.display();
 }
@@ -263,9 +276,24 @@ void displayMenu() {
   display.println("Creator : Fattcat");
   display.println("github.com/Fattcat");
   display.println("System ready.");
-  display.println("Use buttons:");
-  display.println("RX: Receive");
-  display.println("TX: Transmit");
-  display.println("CLEAR: Clear signal");
+  display.println("Tlacidla:");
+  display.println("RX: Prijimaj");
+  display.println("TX: Odošli");
+  display.println("CLEAR: Vymaž");
   display.display();
+}
+
+void loop() {
+  handleButtons();
+  handleRFSignals();
+  handleAsyncTransmit();
+
+  // Spravuj displej
+  if (displayState == MESSAGE && millis() > messageTimeout) {
+    displayState = MENU;
+    displayMenu();
+  }
+
+  // Dôležité: uvoľni procesor pre WiFi a watchdog
+  delay(10); // Malé oneskorenie na prevádzku WDT a WiFi stacku
 }
