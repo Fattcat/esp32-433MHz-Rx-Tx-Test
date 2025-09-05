@@ -33,8 +33,9 @@ bool isReceiving = false;
 unsigned long receiveStartTime = 0;
 long lastValidCode = -1;
 String pendingName = "Unknown";
+bool signalReceived = false; // Pre detekciu signálu v /lastSignal
 
-// === HTML stránka s progress bar a animáciou signálu ===
+// === HTML stránka s Canvas spektrálnou vizualizáciou ===
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="sk">
@@ -151,23 +152,31 @@ const char index_html[] PROGMEM = R"rawliteral(
       transition: width 0.4s;
     }
 
-    /* Animácia signálu */
+    /* Canvas spektrálna vizualizácia */
     .signal-animation {
-      height: 60px;
+      height: 100px;
       margin: 15px 0;
-      position: relative;
-      background: #f0f0f0;
-      border-radius: 8px;
+      background: #000;
+      border-radius: 10px;
       overflow: hidden;
+      position: relative;
+      border: 1px solid #0f0;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
     }
-    .signal-wave {
-      position: absolute;
-      bottom: 0;
+    #spectrumCanvas {
       width: 100%;
-      height: 0;
-      background: #2980b9;
-      border-radius: 8px 8px 0 0;
-      transition: height 0.2s ease;
+      height: 100%;
+      display: block;
+    }
+    #spectrumCanvas::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(transparent 50%, rgba(0, 255, 0, 0.1) 50%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      opacity: 0.3;
+      z-index: 2;
     }
 
     .codes-list {
@@ -259,10 +268,10 @@ const char index_html[] PROGMEM = R"rawliteral(
         </div>
         <button onclick="clearAllCodes()" class="danger">Vymazať všetky kódy</button>
 
-        <!-- Animácia signálu -->
-        <h3>Prijatý signál</h3>
+        <!-- Spektrálna vizualizácia -->
+        <h3>|RF Spektrálna analýza</h3>
         <div class="signal-animation">
-          <div class="signal-wave" id="signalWave"></div>
+          <canvas id="spectrumCanvas"></canvas>
         </div>
       </div>
 
@@ -289,6 +298,9 @@ const char index_html[] PROGMEM = R"rawliteral(
 
   <script>
     let loopInterval = null;
+    let canvas, ctx;
+    let spectrumData = new Uint8Array(128);
+    window.lastSignalReceived = false;
 
     function showMessage(text, isError = false) {
       const msg = document.getElementById('message');
@@ -306,20 +318,83 @@ const char index_html[] PROGMEM = R"rawliteral(
       document.getElementById('progressBar').textContent = percent + '%';
     }
 
-    function updateSignalStrength(height) {
-      document.getElementById('signalWave').style.height = height + 'px';
-      setTimeout(() => {
-        if (parseInt(document.getElementById('signalWave').style.height) === height)
-          document.getElementById('signalWave').style.height = '0px';
-      }, 300);
+    // === Canvas spektrálna vizualizácia ===
+    function initSpectrum() {
+      canvas = document.getElementById('spectrumCanvas');
+      ctx = canvas.getContext('2d');
+      const dpi = window.devicePixelRatio || 1;
+      canvas.width = canvas.offsetWidth * dpi;
+      canvas.height = canvas.offsetHeight * dpi;
+      ctx.scale(dpi, dpi);
+      simulateSpectrum();
     }
 
+    function simulateSpectrum() {
+      const barCount = 128;
+      const data = new Array(barCount);
+
+      // Základný šum
+      for (let i = 0; i < barCount; i++) {
+        data[i] = Math.random() * 20 + 5;
+      }
+
+      // Signál bol zachytený
+      if (window.lastSignalReceived) {
+        const pos = Math.floor(Math.random() * (barCount - 15));
+        for (let i = 0; i < 15; i++) {
+          data[pos + i] = 40 + Math.random() * 60;
+        }
+        window.lastSignalReceived = false;
+      }
+
+      spectrumData = new Uint8Array(data);
+      drawSpectrum();
+      setTimeout(simulateSpectrum, 33); // ~30 FPS
+    }
+
+    function drawSpectrum() {
+      const width = canvas.offsetWidth;
+      const height = canvas.offsetHeight;
+      const barWidth = width / spectrumData.length;
+
+      ctx.clearRect(0, 0, width, height);
+
+      for (let i = 0; i < spectrumData.length; i++) {
+        const v = spectrumData[i];
+        const barHeight = (v / 100) * height;
+
+        let r, g, b;
+        if (v < 30) { r = 0; g = 200; b = 0; }
+        else if (v < 60) { r = 255; g = 200; b = 0; }
+        else { r = 255; g = 0; b = 0; }
+
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
+      }
+    }
+
+    // Detekcia signálu
+    setInterval(() => {
+      fetch('/lastSignal')
+        .then(r => r.json())
+        .then(data => {
+          if (data.received) {
+            window.lastSignalReceived = true;
+          }
+        })
+        .catch(() => {});
+    }, 800);
+
+    // === Zvyšok funkcii ===
     function updateCodesList() {
       const list = document.getElementById('codesList');
       list.innerHTML = '<p>Načítavam...</p>';
 
       fetch('/list')
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
         .then(codes => {
           list.innerHTML = '';
           updateMemoryUsage(codes.length);
@@ -338,7 +413,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <div><strong id="name-${item.code}">${item.name}</strong></div>
                 <div style="font-family:monospace;color:#c0392b">Kód: ${item.code}</div>
                 <input type="text" id="edit-${item.code}" value="${item.name}" 
-                      style="display:none;margin-top:4px;padding:5px;width:100%" />
+                       style="display:none;margin-top:4px;padding:5px;width:100%" />
               </div>
               <div class="code-actions">
                 <button onclick="useCode(${item.code})" title="Použiť">📋</button>
@@ -352,7 +427,7 @@ const char index_html[] PROGMEM = R"rawliteral(
           });
         })
         .catch(err => {
-          list.innerHTML = '<p style="color:red">Chyba zariadenia</p>';
+          list.innerHTML = '<p style="color:red">Chyba: ' + err.message + '</p>';
           console.error('Fetch error:', err);
         });
     }
@@ -360,7 +435,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     function startEdit(code) {
       document.getElementById(`name-${code}`).style.display = 'none';
       const input = document.getElementById(`edit-${code}`);
-      input.style.display = 'inline-block'; // ✅ lepšie ako 'block'
+      input.style.display = 'inline-block';
       input.focus();
       document.querySelector(`[onclick="saveEdit(${code})"]`).style.display = 'inline-block';
       document.querySelector(`[onclick="startEdit(${code})"]`).style.display = 'none';
@@ -375,9 +450,11 @@ const char index_html[] PROGMEM = R"rawliteral(
       })
       .then(() => {
         showMessage('Meno zmenené: ' + newName);
-        updateCodesList(); // 🔁 Znovu načíta zoznam až PO úspešnej zmene
+        updateCodesList();
       })
-      .catch(() => showMessage('Chyba', true));
+      .catch(err => {
+        showMessage('Chyba: ' + err.message, true);
+      });
     }
 
     function useCode(code) {
@@ -485,15 +562,8 @@ const char index_html[] PROGMEM = R"rawliteral(
       }
     }
 
-    // Pripojenie na signál
-    setInterval(() => {
-      fetch('/lastSignal').then(r => r.json()).then(data => {
-        if (data.received) {
-          updateSignalStrength(40 + Math.random() * 20);
-        }
-      }).catch(() => {});
-    }, 800);
-
+    // Spusti
+    initSpectrum();
     updateCodesList();
   </script>
 </body>
@@ -507,11 +577,18 @@ void loadCodesFromEEPROM() {
   for (int i = 0; i < MAX_CODES; i++) {
     CodeItem item;
     EEPROM.get(i * CODE_ITEM_SIZE, item);
-    if (item.code != 0 && item.code != 0xFFFFFFFF) {
-      savedCodes[codeCount++] = item;
-    } else {
-      break;
+
+    if (item.code == 0 || item.code == 0xFFFFFFFF) break;
+
+    bool valid = false;
+    for (int j = 0; j < 32; j++) {
+      char c = item.name[j];
+      if (c == '\0') break;
+      if (c >= 32 && c <= 126) valid = true;
     }
+    if (!valid) strcpy(item.name, "Nezmenovaný");
+
+    savedCodes[codeCount++] = item;
   }
   EEPROM.end();
 }
@@ -542,11 +619,9 @@ void updateNameInEEPROM(long code, const char* newName) {
   int index = findCodeIndex(code);
   if (index == -1) return;
 
-  // Aktualizuj RAM
   strncpy(savedCodes[index].name, newName, 32);
   savedCodes[index].name[32] = '\0';
 
-  // Aktualizuj EEPROM
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.put(index * CODE_ITEM_SIZE, savedCodes[index]);
   EEPROM.commit();
@@ -620,6 +695,11 @@ void setup() {
 
   // EEPROM
   loadCodesFromEEPROM();
+  Serial.printf("sizeof(CodeItem) = %d\n", sizeof(CodeItem));
+  Serial.printf("Debug: codeCount = %d\n", codeCount);
+  for (int i = 0; i < codeCount; i++) {
+    Serial.printf("Kód[%d]: %ld, Meno: %s\n", i, savedCodes[i].code, savedCodes[i].name);
+  }
   printEEPROMStatus();
 
   // Web server
@@ -630,15 +710,32 @@ void setup() {
   server.on("/list", HTTP_GET, [](AsyncWebServerRequest *request){
     String json = "[";
     for (int i = 0; i < codeCount; i++) {
-      json += "{\"name\":\"" + String(savedCodes[i].name) + "\",\"code\":" + String(savedCodes[i].code) + "}";
+      String cleanName = "";
+      for (int j = 0; j < 32; j++) {
+        char c = savedCodes[i].name[j];
+        if (c == '\0') break;
+        if (c >= 32 && c <= 126) {
+          if (c == '"') cleanName += "\\\"";
+          else if (c == '\\') cleanName += "\\\\";
+          else if (c == '\n') cleanName += "\\n";
+          else if (c == '\r') cleanName += "\\r";
+          else cleanName += c;
+        }
+      }
+      if (cleanName.length() == 0) cleanName = "Nezmenovaný";
+
+      json += "{\"name\":\"" + cleanName + "\",\"code\":" + String(savedCodes[i].code) + "}";
       if (i < codeCount - 1) json += ",";
     }
     json += "]";
-    request->send(200, "application/json", json);
+
+    AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json);
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Content-Type", "application/json");
+    request->send(response);
   });
 
-  bool signalReceived = false;
-  server.on("/lastSignal", HTTP_GET, [&signalReceived](AsyncWebServerRequest *request){
+  server.on("/lastSignal", HTTP_GET, [] (AsyncWebServerRequest *request){
     String json = "{\"received\":" + String(signalReceived ? "true" : "false") + "}";
     signalReceived = false;
     request->send(200, "application/json", json);
@@ -691,12 +788,8 @@ void setup() {
     if (request->hasParam("code") && request->hasParam("name")) {
       long code = request->getParam("code")->value().toInt();
       String name = request->getParam("name")->value();
-      
       updateNameInEEPROM(code, name.c_str());
-      
-      // Zabezpečí fyzický zápis do EEPROM
-      EEPROM.commit(); 
-
+      EEPROM.commit();
       request->send(200, "text/plain", "Meno aktualizované");
       printEEPROMStatus();
     } else {
@@ -733,6 +826,7 @@ void loop() {
       int bits = mySwitch.getReceivedBitlength();
       if (bits == 24 && value > 0) {
         lastValidCode = value;
+        signalReceived = true;
         Serial.printf("📡 Zachytený signál: %ld\n", value);
       }
       mySwitch.resetAvailable();
