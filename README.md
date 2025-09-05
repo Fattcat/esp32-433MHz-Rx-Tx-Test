@@ -15,9 +15,8 @@
   <img src="https://komarev.com/ghpvc/?username=Fattcat&style=flat-square" alt="Visitor Badge">
 </div>
 
-
 Capture and Replay signals using classic Arduino Receiver & Transmitter or with cc1101.
-# IF some .ino CODE contains rcswitch.h then It MEANS SUPPORT Receive & Transmit ONLY 24 BIT Signal !
+## IF some .ino CODE contains rcswitch.h then It MEANS SUPPORT Receive & Transmit ONLY 24 BIT Signal !
 ## CONNECTION for classic Receiver and Transmitter :
 ## Supported rc-switch.h version ***2.6.4***
 # 🛠️ Receiver --> esp32 🛠️
@@ -25,14 +24,28 @@ Capture and Replay signals using classic Arduino Receiver & Transmitter or with 
 - GND --> GND
 - Pin --> GPIO 02
 
-# for best usage PLS USE code "esp32-Rx&Tx-OLED.ino" (cuz there is all u need to use) other codes are experimental
+- If you want WiFi, then use ``esp32-RxTx-WiFi-EEPROM.ino```
+  - [x] Receive
+  - [x] Transmit
+  - [x] Watch status
+  - [x] Edit
+  - [x] Save captured signals to EEPROM
+  - [x] Nice GUI to control
+  - [ ] Bruteforce (Working on it)
+  - [ ] Supported cc1101 (its more difficult to work with)
 
+## for best usage PLS USE code "esp32-Rx&Tx-OLED.ino" (cuz there is all u need to use) other codes are experimental
 # Also supported RollingCode function
 
 ## 🛠️ Transmitter --> esp32 🛠️
 - VCC --> 3.3V
 - GND --> GND
 - Pin --> GPIO 04
+
+## 🛠️ Receiver --> esp32 🛠️
+- VCC --> 3.3V
+- GND --> GND
+- Pin --> GPIO 02
 
 ## 🛠️ CONNECTION for cc1101 with esp32 🛠️
 # cc1101 --> esp32
