@@ -33,9 +33,9 @@ bool isReceiving = false;
 unsigned long receiveStartTime = 0;
 long lastValidCode = -1;
 String pendingName = "Unknown";
-bool signalReceived = false; // Pre detekciu signálu v /lastSignal
+bool signalReceived = false;
 
-// === HTML stránka s Canvas spektrálnou vizualizáciou ===
+// === HTML stránka s frekvenčnou mierkou a progress barom ===
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="sk">
@@ -149,7 +149,23 @@ const char index_html[] PROGMEM = R"rawliteral(
       color: white;
       font-size: 14px;
       line-height: 20px;
-      transition: width 0.4s;
+      transition: width 0.1s linear;
+    }
+
+    /* Progress bar pre prijímanie */
+    .receive-progress {
+      width: 100%;
+      height: 10px;
+      background: #ddd;
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 10px 0 5px;
+    }
+    .receive-fill {
+      height: 100%;
+      width: 0%;
+      background: #2980b9;
+      transition: width 0.1s linear;
     }
 
     /* Canvas spektrálna vizualizácia */
@@ -177,6 +193,17 @@ const char index_html[] PROGMEM = R"rawliteral(
       pointer-events: none;
       opacity: 0.3;
       z-index: 2;
+    }
+
+    /* Frekvenčná mierka */
+    .frequency-scale {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #0f0;
+      padding: 0 10px;
     }
 
     .codes-list {
@@ -268,10 +295,26 @@ const char index_html[] PROGMEM = R"rawliteral(
         </div>
         <button onclick="clearAllCodes()" class="danger">Vymazať všetky kódy</button>
 
-        <!-- Spektrálna vizualizácia -->
+        <!-- Progress bar pri prijímaní -->
+        <div class="receive-progress">
+          <div class="receive-fill" id="receiveFill"></div>
+        </div>
+
+        <!-- Názov vizualizácie -->
         <h3>|RF Spektrálna analýza</h3>
+
+        <!-- Spektrálna vizualizácia -->
         <div class="signal-animation">
           <canvas id="spectrumCanvas"></canvas>
+        </div>
+
+        <!-- Frekvenčná mierka -->
+        <div class="frequency-scale">
+          <span>433.0</span>
+          <span>433.4</span>
+          <span>433.8</span>
+          <span>434.2</span>
+          <span>434.6</span>
         </div>
       </div>
 
@@ -349,7 +392,8 @@ const char index_html[] PROGMEM = R"rawliteral(
 
       spectrumData = new Uint8Array(data);
       drawSpectrum();
-      setTimeout(simulateSpectrum, 33); // ~30 FPS
+
+      setTimeout(simulateSpectrum, 100);
     }
 
     function drawSpectrum() {
@@ -371,6 +415,41 @@ const char index_html[] PROGMEM = R"rawliteral(
         ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
         ctx.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
       }
+    }
+
+    // === Progress bar pri prijímaní ===
+    function receiveAndSave() {
+      const name = document.getElementById('nameInput').value.trim() || 'Nezmenovaný';
+      const btn = document.getElementById('receiveBtn');
+      const fill = document.getElementById('receiveFill');
+
+      btn.disabled = true;
+      btn.textContent = 'Prijímanie...';
+
+      fill.style.width = '0%';
+
+      let elapsed = 0;
+      const interval = setInterval(() => {
+        elapsed += 100;
+        const percent = Math.round((elapsed / 3000) * 100);
+        fill.style.width = percent + '%';
+
+        if (elapsed >= 3000) {
+          clearInterval(interval);
+          btn.disabled = false;
+          btn.textContent = 'Receive & Save';
+        }
+      }, 100);
+
+      fetch('/receive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'name=' + encodeURIComponent(name)
+      })
+      .then(() => {
+        showMessage('Hľadám signál...');
+      })
+      .catch(() => showMessage('Chyba', true));
     }
 
     // Detekcia signálu
@@ -465,29 +544,6 @@ const char index_html[] PROGMEM = R"rawliteral(
     function sendStored(code) {
       useCode(code);
       transmitCode();
-    }
-
-    function receiveAndSave() {
-      const name = document.getElementById('nameInput').value.trim() || 'Nezmenovaný';
-      const btn = document.getElementById('receiveBtn');
-      btn.textContent = 'Prijímanie... (3s)';
-      btn.disabled = true;
-
-      fetch('/receive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'name=' + encodeURIComponent(name)
-      })
-      .then(() => {
-        showMessage('Hľadám signál...');
-      })
-      .catch(() => showMessage('Chyba', true))
-      .finally(() => {
-        setTimeout(() => {
-          btn.textContent = 'Receive & Save';
-          btn.disabled = false;
-        }, 3000);
-      });
     }
 
     function transmitCode() {
@@ -785,15 +841,15 @@ void setup() {
   });
 
   server.on("/updateName", HTTP_POST, [](AsyncWebServerRequest *request){
-    if (request->hasParam("code") && request->hasParam("name")) {
-      long code = request->getParam("code")->value().toInt();
-      String name = request->getParam("name")->value();
-      updateNameInEEPROM(code, name.c_str());
-      EEPROM.commit();
-      request->send(200, "text/plain", "Meno aktualizované");
-      printEEPROMStatus();
+    if (request->hasParam("code", true) && request->hasParam("name", true)) {
+      long code = request->getParam("code", true)->value().toInt();
+      String newName = request->getParam("name", true)->value();
+
+      updateNameInEEPROM(code, newName.c_str());
+
+      request->send(200, "text/plain", "OK");
     } else {
-      request->send(200, "text/plain", "Chyba");
+      request->send(400, "text/plain", "Missing parameters");
     }
   });
 
