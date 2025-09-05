@@ -138,15 +138,37 @@ const char index_html[] PROGMEM = R"rawliteral(
       background: #f8f9fa;
     }
     .code-item {
-      padding: 10px;
-      margin: 5px 0;
+      padding: 12px;
+      margin: 8px 0;
       background: white;
       border: 1px solid #ddd;
-      border-radius: 5px;
+      border-radius: 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: transform 0.1s;
+    }
+
+    .code-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .code-info strong {
+      font-size: 16px;
+      color: #2c3e50;
+    }
+
+    .code-info code {
+      font-family: 'Courier New', monospace;
+      background: #f0f0f0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #c0392b;
+      border: 1px solid #eee;
     }
     .code-info {
       flex: 1;
@@ -255,14 +277,14 @@ const char index_html[] PROGMEM = R"rawliteral(
             div.className = 'code-item';
             div.innerHTML = `
               <div class="code-info">
-                <span id="name-${item.code}">${item.name}</span>
-                <input type="text" id="edit-${item.code}" class="edit-input" value="${item.name}" style="display:none;" />
+                <div><strong>${item.name}</strong></div>
+                <div style="font-family: monospace; color: #e74c3c; font-size: 1.1em;">Kód: ${item.code}</div>
               </div>
               <div class="code-actions">
-                <button onclick="sendStored(${item.code})">Odoslať</button>
+                <button onclick="sendStored(${item.code})" title="Odoslať">📤</button>
                 <button onclick="startEdit(${item.code})" title="Upraviť meno">✎</button>
                 <button onclick="saveEdit(${item.code})" style="display:none;" title="Uložiť">✔️</button>
-                <button onclick="deleteCode(${item.code})" class="danger">🗑️</button>
+                <button onclick="deleteCode(${item.code})" class="danger" title="Vymazať">🗑️</button>
               </div>
             `;
             list.appendChild(div);
