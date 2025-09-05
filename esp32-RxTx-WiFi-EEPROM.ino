@@ -315,10 +315,12 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
 
     function updateCodesList() {
+      const list = document.getElementById('codesList');
+      list.innerHTML = '<p>Načítavam...</p>';
+
       fetch('/list')
         .then(res => res.json())
         .then(codes => {
-          const list = document.getElementById('codesList');
           list.innerHTML = '';
           updateMemoryUsage(codes.length);
 
@@ -336,7 +338,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <div><strong id="name-${item.code}">${item.name}</strong></div>
                 <div style="font-family:monospace;color:#c0392b">Kód: ${item.code}</div>
                 <input type="text" id="edit-${item.code}" value="${item.name}" 
-                       style="display:none;margin-top:4px;padding:5px;width:100%" />
+                      style="display:none;margin-top:4px;padding:5px;width:100%" />
               </div>
               <div class="code-actions">
                 <button onclick="useCode(${item.code})" title="Použiť">📋</button>
@@ -349,13 +351,16 @@ const char index_html[] PROGMEM = R"rawliteral(
             list.appendChild(div);
           });
         })
-        .catch(() => showMessage('Chyba pri načítaní', true));
+        .catch(err => {
+          list.innerHTML = '<p style="color:red">Chyba zariadenia</p>';
+          console.error('Fetch error:', err);
+        });
     }
 
     function startEdit(code) {
       document.getElementById(`name-${code}`).style.display = 'none';
       const input = document.getElementById(`edit-${code}`);
-      input.style.display = 'block';
+      input.style.display = 'inline-block'; // ✅ lepšie ako 'block'
       input.focus();
       document.querySelector(`[onclick="saveEdit(${code})"]`).style.display = 'inline-block';
       document.querySelector(`[onclick="startEdit(${code})"]`).style.display = 'none';
@@ -370,7 +375,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       })
       .then(() => {
         showMessage('Meno zmenené: ' + newName);
-        updateCodesList();
+        updateCodesList(); // 🔁 Znovu načíta zoznam až PO úspešnej zmene
       })
       .catch(() => showMessage('Chyba', true));
     }
@@ -686,7 +691,12 @@ void setup() {
     if (request->hasParam("code") && request->hasParam("name")) {
       long code = request->getParam("code")->value().toInt();
       String name = request->getParam("name")->value();
+      
       updateNameInEEPROM(code, name.c_str());
+      
+      // Zabezpečí fyzický zápis do EEPROM
+      EEPROM.commit(); 
+
       request->send(200, "text/plain", "Meno aktualizované");
       printEEPROMStatus();
     } else {
