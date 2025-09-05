@@ -171,7 +171,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
 
     .codes-list {
-      max-height: 250px;
+      max-height: 500px;
       overflow-y: auto;
       border: 1px solid #ddd;
       border-radius: 8px;
