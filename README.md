@@ -10,8 +10,9 @@
 
 ---
 
-## 
-[![go here](github.com/Fattcat/RF-TechCat)](github.com/Fattcat/RF-TechCat)
+## for GRAPHICAL version go here 
+[Click Here](github.com/Fattcat/RF-TechCat)
+
 <div align="center" height: 200px; width: 50px;>
   <img src="https://komarev.com/ghpvc/?username=Fattcat&style=flat-square" alt="Visitor Badge">
 </div>
