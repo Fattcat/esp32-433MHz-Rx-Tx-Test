@@ -11,7 +11,8 @@
 ---
 
 ## for GRAPHICAL version go here 
-[Click Here]([github.com/Fattcat/RF-TechCat](https://github.com/Fattcat/RF-TechCat))
+[Click Here](https://github.com/Fattcat/RF-TechCat)
+[Click Here](https://github.com/Fattcat/RF-TechCat/blob/main/RF-TechCat-DEMO.ino)
 
 <div align="center" height: 200px; width: 50px;>
   <img src="https://komarev.com/ghpvc/?username=Fattcat&style=flat-square" alt="Visitor Badge">
